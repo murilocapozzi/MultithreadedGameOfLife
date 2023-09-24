@@ -12,23 +12,24 @@ Turma: I
 #include <stdlib.h>
 #include <pthread.h>
 
-#define BOARD_SIZE 50
-#define GENERATIONS 50
-#define NUM_THREADS 8
+#define BOARD_SIZE 2048
+#define GENERATIONS 2000
+#define NUM_THREADS 1
 
 
 pthread_t t[NUM_THREADS];
-int i = 0;
+int i = 0; // Variável global compartilhada das threads
 
+/* Estrutura para entrada de dados da thread */
 typedef struct {
     int t_id;
     int initial;
     int final;
     float **actual;
     float **new;
-    int quantity;
 }thread_data;
 
+/* Iniciar a matriz zerada, com as duas primeira*/
 float **initGrid(){
     float **erased_grid;
     int i, j ;
@@ -43,6 +44,7 @@ float **initGrid(){
             erased_grid[i][j] = 0.0;
     }
 
+    // GLIDER
     erased_grid[1][2] = 1.0;
     erased_grid[2][3] = 1.0;
     erased_grid[3][1] = 1.0;
@@ -68,13 +70,13 @@ void freeGrid(float **grid){
     free(grid);
 }
 
-int quantityAlive(float **grid){
+/* Impressão da matriz */
+void printGrid(float **grid){
     int i, j, quantity = 0;
 
-    for(i = 0; i < BOARD_SIZE; i++){
-        for(j = 0; j < BOARD_SIZE; j++){
+    for(i = 0; i < 50; i++){
+        for(j = 0; j < 50; j++){
             if(grid[i][j] > 0.0){
-                quantity++;
                 printf("%.1f ", grid[i][j]);
             }
             else{
@@ -84,28 +86,39 @@ int quantityAlive(float **grid){
             printf("\n");
     }
     printf("----------------------\n\n");
+}
 
+ /* Quantificação de vivos */
+int quantityAlive(float **grid){
+    int i, j, quantity = 0;
+
+    for(i = 0; i < BOARD_SIZE; i++){
+        for(j = 0; j < BOARD_SIZE; j++){
+            if(grid[i][j] > 0.0)
+                quantity++;
+        }
+    }
     return quantity;
 }
 
-// Simular a matriz de borda infinita
+/* Simular a matriz de borda infinita */
 int getCoord(int n){
-
     while(n % BOARD_SIZE < 0)
         n += BOARD_SIZE;
-
     return n % BOARD_SIZE;
 }
 
+/* Calcula a quantidade de vizinhos vivos */
 int getNeighbors(float **grid, int i, int j){
     int k, l, quantity = 0;
 
     for(k = -1; k <= 1; k++){
         for(l = -1; l <= 1; l++){
-            if(k == 0 && l == 0)
+
+            if(k == 0 && l == 0) // Ele mesmo
                 continue;
             
-            if(grid[getCoord(i + k)][getCoord(j + l)] > 0)
+            if(grid[getCoord(i + k)][getCoord(j + l)] > 0) // Vizinho vivo
                 quantity++; 
         }
     }
@@ -113,15 +126,17 @@ int getNeighbors(float **grid, int i, int j){
     return quantity;
 }
 
+/* Calcula a media dos vizinhos */
 float meanNeighbors(float **grid, int i, int j){
     int k, l;
     float sum = 0.0;
 
     for(k = -1; k <= 1; k++){
             for(l = -1; l <= 1; l++){
-                if(k == 0 && l == 0)
-                    continue;
 
+                if(k == 0 && l == 0) // Ele mesmo
+                    continue;
+                    
                 sum += grid[getCoord(i + k)][getCoord(j + l)];
             }
         }
@@ -130,15 +145,13 @@ float meanNeighbors(float **grid, int i, int j){
     return (sum / 8.0);
 }
 
+/* Logica principal do jogo */
 void *gameOfLife_pthread(void *arg){
 
     thread_data *tdata=(thread_data *)arg;
 
     int i, j, quantity;
     float value;
-
-    int *quantity_alive = malloc(sizeof(int));
-    *quantity_alive = 0;
 
     for(i = tdata->initial; i <= tdata->final; i++){
 
@@ -147,28 +160,20 @@ void *gameOfLife_pthread(void *arg){
             quantity = getNeighbors(tdata->actual, i ,j);
             value = tdata->actual[i][j];
 
-            // Regras para próximo estado
-            if(value > 0 && (quantity == 2 || quantity == 3)){     // Se estão vivas e possuem 2 ou 3 vizinhos, permanecem
+            if(value > 0 && (quantity == 2 || quantity == 3))           // Se estão vivas e possuem 2 ou 3 vizinhos, permanecem
                 tdata->new[i][j] = 1.0;
-                (*quantity_alive)++;
-            }
-            else if(value == 0 && quantity == 3){           // Se está morta e possui 3 vizinhos, renasce
+            else if(value == 0 && quantity == 3)                        // Se está morta e possui 3 vizinhos, renasce
                 tdata->new[i][j] = meanNeighbors(tdata->actual, i, j);
-                (*quantity_alive)++;
-            }
             else
                 tdata->new[i][j] = 0.0;
         }
     }
 
-    tdata->quantity = *quantity_alive;
-
-    pthread_exit((void *)tdata);
+    pthread_exit(NULL);
 }
 
 int main(int argc, char **argv){
     int j, quantity;
-    char c;
 
     float **actual = initGrid();
     float **new = initGrid();
@@ -197,15 +202,12 @@ int main(int argc, char **argv){
         for(j = 0, quantity = 0; j < NUM_THREADS; j++){
             thread_data *tdata = malloc(sizeof(thread_data));
 
-            pthread_join(t[j], (void *)&tdata);
-
-            quantity += tdata->quantity;
-
+            pthread_join(t[j], NULL);
         }
         if(i < 6 || i == GENERATIONS){
-            int quantity = quantityAlive(actual);
+            quantity = quantityAlive(actual);
+            printGrid(actual);
             printf("Geração %d: %d celulas vivas\n", i, quantity);
-            scanf("%c", &c);
         }
     }
 

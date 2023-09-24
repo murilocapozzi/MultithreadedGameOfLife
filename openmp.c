@@ -12,10 +12,11 @@ Turma: I
 #include <stdlib.h>
 #include <omp.h>
 
-#define BOARD_SIZE 50
-#define GENERATIONS 50
-#define NUM_THREADS 8
+#define BOARD_SIZE 2048
+#define GENERATIONS 2000
+#define NUM_THREADS 1
 
+/* Iniciar a matriz zerada, com as duas primeira*/
 float **initGrid(){
     float **erased_grid;
     int i, j ;
@@ -30,6 +31,7 @@ float **initGrid(){
             erased_grid[i][j] = 0.0;
     }
 
+    // GLIDER
     erased_grid[1][2] = 1.0;
     erased_grid[2][3] = 1.0;
     erased_grid[3][1] = 1.0;
@@ -48,20 +50,18 @@ float **initGrid(){
 
 void freeGrid(float **grid){
     int i;
-
     for(i = 0; i < BOARD_SIZE; i++)
         free(grid[i]);
-
     free(grid);
 }
 
-int quantityAlive(float **grid){
+/* Impressão da matriz */
+void printGrid(float **grid){
     int i, j, quantity = 0;
 
-    for(i = 0; i < BOARD_SIZE; i++){
-        for(j = 0; j < BOARD_SIZE; j++){
+    for(i = 0; i < 50; i++){
+        for(j = 0; j < 50; j++){
             if(grid[i][j] > 0.0){
-                quantity++;
                 printf("%.1f ", grid[i][j]);
             }
             else{
@@ -72,10 +72,21 @@ int quantityAlive(float **grid){
     }
     printf("----------------------\n\n");
 
+}
+ /* Quantificação de vivos */
+int quantityAlive(float **grid){
+    int i, j, quantity = 0;
+
+    for(i = 0; i < BOARD_SIZE; i++){
+        for(j = 0; j < BOARD_SIZE; j++){
+            if(grid[i][j] > 0.0)
+                quantity++;
+        }
+    }
     return quantity;
 }
 
-// Simular a matriz de borda infinita
+/* Simular a matriz de borda infinita */
 int getCoord(int n){
 
     while(n % BOARD_SIZE < 0)
@@ -84,15 +95,17 @@ int getCoord(int n){
     return n % BOARD_SIZE;
 }
 
+/* Calcula a quantidade de vizinhos vivos */
 int getNeighbors(float **grid, int i, int j){
     int k, l, quantity = 0;
 
     for(k = -1; k <= 1; k++){
         for(l = -1; l <= 1; l++){
-            if(k == 0 && l == 0)
+
+            if(k == 0 && l == 0) // Ele mesmo
                 continue;
             
-            if(grid[getCoord(i + k)][getCoord(j + l)] > 0)
+            if(grid[getCoord(i + k)][getCoord(j + l)] > 0) // Vizinho vivo
                 quantity++; 
         }
     }
@@ -100,13 +113,15 @@ int getNeighbors(float **grid, int i, int j){
     return quantity;
 }
 
+/* Calcula a media dos vizinhos */
 float meanNeighbors(float **grid, int i, int j){
     int k, l;
     float sum = 0.0;
 
     for(k = -1; k <= 1; k++){
             for(l = -1; l <= 1; l++){
-                if(k == 0 && l == 0)
+
+                if(k == 0 && l == 0) // Ele mesmo
                     continue;
 
                 sum += grid[getCoord(i + k)][getCoord(j + l)];
@@ -117,36 +132,32 @@ float meanNeighbors(float **grid, int i, int j){
     return (sum / 8.0);
 }
 
+/* Logica principal do jogo */
 float** gameOfLife(float **grid, float **newgrid){
 
-    int i, j, quantity = 0, quantityAlive = 0;
+    int i, j, quantity = 0;
     float value;
 
 #pragma omp parallel num_threads(NUM_THREADS) private(i,j,quantity,value) shared(grid, newgrid)
 
     for(i = 0; i < BOARD_SIZE; i++){
 
-        #pragma omp for reduction(+:quantityAlive)
-
         for(j = 0; j < BOARD_SIZE; j++){
+
             quantity = getNeighbors(grid, i ,j);
             value = grid[i][j];
 
             // Regras para próximo estado
-            if(value > 0 && (quantity == 2 || quantity == 3)){     // Se estão vivas e possuem 2 ou 3 vizinhos, permanecem
+            if(value > 0 && (quantity == 2 || quantity == 3))     // Se estão vivas e possuem 2 ou 3 vizinhos, permanecem
                 newgrid[i][j] = 1.0;
-                quantityAlive++;
-            }
-            else if(value == 0 && quantity == 3){                   // Se está morta e possui 3 vizinhos, renasce
+            else if(value == 0 && quantity == 3)                  // Se está morta e possui 3 vizinhos, renasce
                 newgrid[i][j] = meanNeighbors(grid, i, j);
-                quantityAlive++;
-            }
             else
                 newgrid[i][j] = 0.0;
         }
     }
 
-#pragma omp barrier
+#pragma omp barrier // Sincronização
     return newgrid;
 }
 
@@ -166,6 +177,7 @@ int main(int argc, char **argv){
             {
                 if(i < 6 || i == GENERATIONS){
                     quantity = quantityAlive(actual);
+                    printGrid(actual);
                     printf("Geração %d: %d celulas vivas\n", i, quantity);
                 }
             }
