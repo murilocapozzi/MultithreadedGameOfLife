@@ -22,7 +22,6 @@ int i = 0; // Variável global compartilhada das threads
 
 /* Estrutura para entrada de dados da thread */
 typedef struct {
-    int t_id;
     int initial;
     int final;
     float **actual;
@@ -136,7 +135,7 @@ float meanNeighbors(float **grid, int i, int j){
 
                 if(k == 0 && l == 0) // Ele mesmo
                     continue;
-                    
+
                 sum += grid[getCoord(i + k)][getCoord(j + l)];
             }
         }
@@ -186,8 +185,9 @@ int main(int argc, char **argv){
         new = temp;
 
         for(j = 0; j < NUM_THREADS; j++){
+
             thread_data *tdata = malloc(sizeof(thread_data));
-            tdata->t_id = j;
+            
             tdata->actual = actual;
             tdata->new = new;
 
