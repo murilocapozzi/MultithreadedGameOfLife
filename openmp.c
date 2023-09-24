@@ -1,6 +1,6 @@
 /*
 
-Programação Multithreaded para o Jogo da Vida
+Programação Multithreaded para o Jogo da Vida - Versão OpenMP
 
 Autor: Murilo Capozzi dos Santos
 RA: 149425
@@ -12,9 +12,9 @@ Turma: I
 #include <stdlib.h>
 #include <omp.h>
 
-#define BOARD_SIZE 2048
-#define NUM_THREADS 1
-#define GENERATIONS 2000
+#define BOARD_SIZE 50
+#define GENERATIONS 50
+#define NUM_THREADS 8
 
 float **initGrid(){
     float **erased_grid;
@@ -58,22 +58,20 @@ void freeGrid(float **grid){
 int quantityAlive(float **grid){
     int i, j, quantity = 0;
 
-    //system("clear");
     for(i = 0; i < BOARD_SIZE; i++){
         for(j = 0; j < BOARD_SIZE; j++){
             if(grid[i][j] > 0.0){
                 quantity++;
-                //printf("%.1f ", grid[i][j]);
+                printf("%.1f ", grid[i][j]);
             }
             else{
-                //printf("   ");
+                printf("   ");
             }
         }
-            //printf("\n");
+            printf("\n");
     }
-    //printf("----------------------\n\n");
+    printf("----------------------\n\n");
 
-    //sleep(1);
     return quantity;
 }
 
@@ -154,7 +152,6 @@ float** gameOfLife(float **grid, float **newgrid){
 
 int main(int argc, char **argv){
     int i, quantity;
-    char c;
 
     float **actual = initGrid();
     float **new = initGrid();
@@ -167,13 +164,14 @@ int main(int argc, char **argv){
 
         #pragma omp single
             {
-                quantity = quantityAlive(actual);
-                //printf("Geração %d: %d celulas vivas\n", i, quantity);
+                if(i < 6 || i == GENERATIONS){
+                    quantity = quantityAlive(actual);
+                    printf("Geração %d: %d celulas vivas\n", i, quantity);
+                }
             }
 
         new = gameOfLife(actual, new);
 
-        //scanf("%c", &c);
         #pragma omp barrier
     }
 

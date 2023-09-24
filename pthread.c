@@ -1,6 +1,6 @@
 /*
 
-Programação Multithreaded para o Jogo da Vida
+Programação Multithreaded para o Jogo da Vida - Versão Pthread
 
 Autor: Murilo Capozzi dos Santos
 RA: 149425
@@ -12,9 +12,9 @@ Turma: I
 #include <stdlib.h>
 #include <pthread.h>
 
-#define BOARD_SIZE 2048
-#define GENERATIONS 2000
-#define NUM_THREADS 1
+#define BOARD_SIZE 50
+#define GENERATIONS 50
+#define NUM_THREADS 8
 
 
 pthread_t t[NUM_THREADS];
@@ -71,7 +71,6 @@ void freeGrid(float **grid){
 int quantityAlive(float **grid){
     int i, j, quantity = 0;
 
-    //system("clear");
     for(i = 0; i < BOARD_SIZE; i++){
         for(j = 0; j < BOARD_SIZE; j++){
             if(grid[i][j] > 0.0){
@@ -131,29 +130,6 @@ float meanNeighbors(float **grid, int i, int j){
     return (sum / 8.0);
 }
 
-float** gameOfLife(float **grid, float **newgrid){
-    int i, j, quantity = 0;
-    float value;
-
-    for(i = 0; i < BOARD_SIZE; i++){
-        for(j = 0; j < BOARD_SIZE; j++){
-
-            quantity = getNeighbors(grid, i ,j);
-            value = grid[i][j];
-
-            // Regras para próximo estado
-            if(value > 0 && (quantity == 2 || quantity == 3))     // Se estão vivas e possuem 2 ou 3 vizinhos, permanecem
-                newgrid[i][j] = 1.0;
-            else if(value == 0 && quantity == 3)                   // Se está morta e possui 3 vizinhos, renasce
-                newgrid[i][j] = meanNeighbors(grid, i, j);
-            else
-                newgrid[i][j] = 0.0;
-        }
-    }
-
-    return newgrid;
-}
-
 void *gameOfLife_pthread(void *arg){
 
     thread_data *tdata=(thread_data *)arg;
@@ -204,13 +180,13 @@ int main(int argc, char **argv){
         actual = new;
         new = temp;
 
-        //printf("ATUAL: %d\n", quantityAlive(actual));
-
         for(j = 0; j < NUM_THREADS; j++){
             thread_data *tdata = malloc(sizeof(thread_data));
             tdata->t_id = j;
             tdata->actual = actual;
             tdata->new = new;
+
+            /* Parcela a matriz igualmente para cada thread */
             tdata->initial = BOARD_SIZE * j / NUM_THREADS;
             tdata->final = BOARD_SIZE * (j + 1) / NUM_THREADS - 1;
 
@@ -226,10 +202,11 @@ int main(int argc, char **argv){
             quantity += tdata->quantity;
 
         }
-        
-        //printf("Geração %d: %d celulas vivas\n", i, quantity);
-
-        //scanf("%c", &c);
+        if(i < 6 || i == GENERATIONS){
+            int quantity = quantityAlive(actual);
+            printf("Geração %d: %d celulas vivas\n", i, quantity);
+            scanf("%c", &c);
+        }
     }
 
     freeGrid(actual);
